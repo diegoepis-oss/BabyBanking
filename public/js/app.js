@@ -303,7 +303,7 @@ document.getElementById('modal-close').addEventListener('click', closeModal);
 function openModal(action) {
   state.pendingAction = action;
   state.parentPin = '';
-  modalTitle.textContent = action === 'deposit' ? '➕ Metti dentro i soldi' : '➖ Tira fuori i soldi';
+  modalTitle.textContent = action === 'deposit' ? '➕ Aggiungi soldi ai risparmi' : '➖ Prendi soldi dai risparmi';
   modalAmount.value = '';
   modalDescription.value = '';
   modalDate.value = new Date().toISOString().slice(0, 10);
