@@ -45,6 +45,12 @@ router.get('/accounts/:id/transactions', requireLogin, (req, res) => {
   res.json(store.getTransactions(req.params.id));
 });
 
+router.get('/accounts/:id/stats', requireLogin, (req, res) => {
+  const account = store.getAccount(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Salvadanaio non trovato' });
+  res.json(store.getMonthlyStats(req.params.id, 6));
+});
+
 router.post('/accounts/:id/transactions', requireLogin, (req, res) => {
   const { type, amount, description, date, parentPin } = req.body;
 

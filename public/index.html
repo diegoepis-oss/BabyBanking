@@ -48,8 +48,39 @@
     <button class="btn-action btn-withdraw" id="btn-open-withdraw">➖ Tira fuori i soldi</button>
   </div>
 
+  <button class="btn-stats" id="btn-open-stats">📊 Le mie statistiche</button>
+
   <h3 class="history-title">📜 La storia dei tuoi risparmi</h3>
   <ul class="history-list" id="history-list"></ul>
+</section>
+
+<!-- STATISTICHE MENSILI -->
+<section id="view-stats" class="view" hidden>
+  <header class="topbar">
+    <button id="btn-back-stats" class="btn-link">← Indietro</button>
+    <button id="btn-logout-3" class="btn-link">Esci</button>
+  </header>
+
+  <div class="account-header" id="stats-header">
+    <div class="account-avatar" id="stats-avatar"></div>
+    <h2 id="stats-name"></h2>
+    <div class="balance-label">📊 Come sono cresciuti i tuoi risparmi</div>
+  </div>
+
+  <div class="chart-card">
+    <p class="chart-explainer">
+      Ogni colonna è un mese. Se è <strong class="text-green">verde</strong> vuol dire che in quel
+      mese hai messo via più soldi di quanti ne hai spesi. Se è
+      <strong class="text-orange">arancione</strong>, vuol dire che hai speso più di quanto hai risparmiato.
+      Il numero sotto ogni colonna è quanto avevi risparmiato in totale alla fine di quel mese.
+    </p>
+    <div id="chart-container" class="chart-container"></div>
+    <p class="chart-scroll-hint">👉 Scorri con il dito per vedere tutti i mesi</p>
+    <div class="chart-legend">
+      <span><span class="legend-dot legend-green"></span> Mese in cui hai risparmiato</span>
+      <span><span class="legend-dot legend-orange"></span> Mese in cui hai speso di più</span>
+    </div>
+  </div>
 </section>
 
 <!-- MODALE OPERAZIONE (DEPOSITO / PRELIEVO) -->

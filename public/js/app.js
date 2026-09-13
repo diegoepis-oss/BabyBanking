@@ -9,6 +9,7 @@ const views = {
   login: document.getElementById('view-login'),
   dashboard: document.getElementById('view-dashboard'),
   account: document.getElementById('view-account'),
+  stats: document.getElementById('view-stats'),
 };
 
 function showView(name) {
@@ -130,6 +131,7 @@ async function openDashboard() {
 
 document.getElementById('btn-logout').addEventListener('click', logout);
 document.getElementById('btn-logout-2').addEventListener('click', logout);
+document.getElementById('btn-logout-3').addEventListener('click', logout);
 
 async function logout() {
   await api('/logout', { method: 'POST' });
@@ -178,6 +180,108 @@ function escapeHtml(str) {
   div.textContent = str;
   return div.innerHTML;
 }
+
+// ---------- STATISTICS PAGE ----------
+
+document.getElementById('btn-open-stats').addEventListener('click', () => openStats(state.currentAccountId));
+document.getElementById('btn-back-stats').addEventListener('click', () => openAccount(state.currentAccountId));
+
+async function openStats(accountId) {
+  state.currentAccountId = accountId;
+  const account = await api('/accounts/' + accountId);
+  document.getElementById('stats-avatar').textContent = account.avatar;
+  document.getElementById('stats-name').textContent = account.name;
+
+  const months = await api('/accounts/' + accountId + '/stats');
+  const chartContainer = document.getElementById('chart-container');
+  renderChart(chartContainer, months);
+
+  showView('stats');
+  updateChartScrollHint();
+}
+
+function renderChart(container, months) {
+  container.innerHTML = '';
+
+  const width = 600;
+  const height = 260;
+  const paddingTop = 24;
+  const paddingBottom = 56;
+  const zeroY = paddingTop + (height - paddingTop - paddingBottom) / 2;
+  const plotHeight = height - paddingTop - paddingBottom;
+  const barSlot = width / months.length;
+  const barWidth = Math.min(48, barSlot * 0.55);
+
+  const maxAbs = Math.max(10, ...months.map((m) => Math.abs(m.net)));
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('class', 'chart-svg');
+
+  // zero line (asse orizzontale di riferimento)
+  const zeroLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  zeroLine.setAttribute('x1', 0);
+  zeroLine.setAttribute('x2', width);
+  zeroLine.setAttribute('y1', zeroY);
+  zeroLine.setAttribute('y2', zeroY);
+  zeroLine.setAttribute('class', 'chart-axis');
+  svg.appendChild(zeroLine);
+
+  months.forEach((m, i) => {
+    const slotCenter = barSlot * i + barSlot / 2;
+    const barHeight = (Math.abs(m.net) / maxAbs) * (plotHeight / 2);
+    const isPositive = m.net >= 0;
+    const barY = isPositive ? zeroY - barHeight : zeroY;
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', slotCenter - barWidth / 2);
+    rect.setAttribute('y', barY);
+    rect.setAttribute('width', barWidth);
+    rect.setAttribute('height', Math.max(barHeight, 2));
+    rect.setAttribute('rx', 6);
+    rect.setAttribute('class', isPositive ? 'chart-bar chart-bar-positive' : 'chart-bar chart-bar-negative');
+    svg.appendChild(rect);
+
+    // valore del movimento del mese, sopra o sotto la colonna
+    const netLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    netLabel.setAttribute('x', slotCenter);
+    netLabel.setAttribute('y', isPositive ? barY - 8 : barY + barHeight + 16);
+    netLabel.setAttribute('class', 'chart-net-label');
+    netLabel.setAttribute('text-anchor', 'middle');
+    netLabel.textContent = (m.net >= 0 ? '+' : '') + formatMoney(m.net);
+    svg.appendChild(netLabel);
+
+    // nome del mese
+    const monthLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    monthLabel.setAttribute('x', slotCenter);
+    monthLabel.setAttribute('y', height - 34);
+    monthLabel.setAttribute('class', 'chart-month-label');
+    monthLabel.setAttribute('text-anchor', 'middle');
+    monthLabel.textContent = m.label;
+    svg.appendChild(monthLabel);
+
+    // totale accumulato a fine mese
+    const totalLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    totalLabel.setAttribute('x', slotCenter);
+    totalLabel.setAttribute('y', height - 16);
+    totalLabel.setAttribute('class', 'chart-total-label');
+    totalLabel.setAttribute('text-anchor', 'middle');
+    totalLabel.textContent = 'Totale: ' + formatMoney(m.balanceAtEnd);
+    svg.appendChild(totalLabel);
+  });
+
+  container.appendChild(svg);
+}
+
+function updateChartScrollHint() {
+  const chartContainer = document.getElementById('chart-container');
+  const scrollHint = document.querySelector('.chart-scroll-hint');
+  scrollHint.hidden = chartContainer.scrollWidth <= chartContainer.clientWidth + 1;
+}
+
+window.addEventListener('resize', () => {
+  if (!views.stats.hidden) updateChartScrollHint();
+});
 
 // ---------- MODAL: DEPOSIT / WITHDRAW ----------
 

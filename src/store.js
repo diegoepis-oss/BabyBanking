@@ -99,6 +99,53 @@ function addTransaction({ accountId, type, amount, description, date }) {
   return transaction;
 }
 
+const MONTH_NAMES_IT = [
+  'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
+  'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
+];
+
+function getMonthlyStats(accountId, monthsBack = 6) {
+  const db = readDb();
+  const transactions = db.transactions.filter((t) => t.accountId === accountId);
+
+  const now = new Date();
+  const months = [];
+  for (let i = monthsBack - 1; i >= 0; i--) {
+    months.push(new Date(now.getFullYear(), now.getMonth() - i, 1));
+  }
+
+  const rangeStart = months[0];
+  let runningBalance = transactions
+    .filter((t) => new Date(t.date) < rangeStart)
+    .reduce((sum, t) => sum + (t.type === 'deposit' ? t.amount : -t.amount), 0);
+
+  return months.map((monthStart) => {
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 1);
+    const monthTx = transactions.filter((t) => {
+      const d = new Date(t.date);
+      return d >= monthStart && d < monthEnd;
+    });
+
+    const deposits = monthTx
+      .filter((t) => t.type === 'deposit')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const withdrawals = monthTx
+      .filter((t) => t.type === 'withdraw')
+      .reduce((sum, t) => sum + t.amount, 0);
+    const net = Math.round((deposits - withdrawals) * 100) / 100;
+
+    runningBalance = Math.round((runningBalance + net) * 100) / 100;
+
+    return {
+      label: `${MONTH_NAMES_IT[monthStart.getMonth()]} ${monthStart.getFullYear()}`,
+      deposits: Math.round(deposits * 100) / 100,
+      withdrawals: Math.round(withdrawals * 100) / 100,
+      net,
+      balanceAtEnd: runningBalance,
+    };
+  });
+}
+
 function verifyKidsPin(pin) {
   const db = readDb();
   return bcrypt.compareSync(String(pin), db.settings.kidsPinHash);
@@ -120,6 +167,7 @@ module.exports = {
   getAccounts,
   getAccount,
   getTransactions,
+  getMonthlyStats,
   addTransaction,
   verifyKidsPin,
   verifyParentPin,
