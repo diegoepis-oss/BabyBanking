@@ -75,11 +75,23 @@
       Il numero sotto ogni colonna è quanto avevi risparmiato in totale alla fine di quel mese.
     </p>
     <div id="chart-container" class="chart-container"></div>
-    <p class="chart-scroll-hint">👉 Scorri con il dito per vedere tutti i mesi</p>
+    <p id="chart-scroll-hint" class="chart-scroll-hint">👉 Scorri con il dito per vedere tutti i mesi</p>
     <div class="chart-legend">
       <span><span class="legend-dot legend-green"></span> Mese in cui hai risparmiato</span>
       <span><span class="legend-dot legend-orange"></span> Mese in cui hai speso di più</span>
     </div>
+  </div>
+
+  <h3 class="history-title">📈 Il totale dei risparmi nel tempo</h3>
+  <div class="chart-card">
+    <p class="chart-explainer">
+      Questo grafico mostra il <strong>totale</strong> dei tuoi risparmi, mese dopo mese: più la
+      linea sale, più i risparmi sono cresciuti! Le righe orizzontali grigie ti aiutano a leggere i
+      numeri: guarda a che altezza si trova un pallino e segui la riga tratteggiata fino al numero
+      sulla sinistra, oppure leggi direttamente l'etichetta sopra il pallino.
+    </p>
+    <div id="cumulative-chart-container" class="chart-container"></div>
+    <p id="cumulative-scroll-hint" class="chart-scroll-hint">👉 Scorri con il dito per vedere tutti i mesi</p>
   </div>
 </section>
 
@@ -110,6 +122,19 @@
       <p id="modal-parent-error" class="error-text" hidden></p>
       <div class="keypad" id="parent-keypad"></div>
     </div>
+  </div>
+</div>
+
+<!-- MODALE CONFERMA CANCELLAZIONE MOVIMENTO -->
+<div id="delete-overlay" class="modal-overlay" hidden>
+  <div class="modal">
+    <button class="modal-close" id="delete-modal-close">✕</button>
+    <h2>🗑️ Cancellare questo movimento?</h2>
+    <div class="delete-summary" id="delete-summary"></div>
+    <p class="subtitle">Serve il permesso di mamma o papà per confermare</p>
+    <div id="delete-parent-dots" class="pin-dots"></div>
+    <p id="delete-parent-error" class="error-text" hidden></p>
+    <div class="keypad" id="delete-parent-keypad"></div>
   </div>
 </div>
 

@@ -99,6 +99,30 @@ function addTransaction({ accountId, type, amount, description, date }) {
   return transaction;
 }
 
+function deleteTransaction(accountId, transactionId) {
+  const db = readDb();
+  const index = db.transactions.findIndex(
+    (t) => t.id === transactionId && t.accountId === accountId
+  );
+  if (index === -1) throw new Error('Movimento non trovato');
+
+  db.transactions.splice(index, 1);
+  recomputeBalanceSnapshots(db, accountId);
+  writeDb(db);
+}
+
+function recomputeBalanceSnapshots(db, accountId) {
+  const accountTx = db.transactions
+    .filter((t) => t.accountId === accountId)
+    .sort((a, b) => new Date(a.date) - new Date(b.date) || a.createdAt.localeCompare(b.createdAt));
+
+  let running = 0;
+  accountTx.forEach((t) => {
+    running += t.type === 'deposit' ? t.amount : -t.amount;
+    t.balanceAfter = Math.round(running * 100) / 100;
+  });
+}
+
 const MONTH_NAMES_IT = [
   'Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu',
   'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
@@ -169,6 +193,7 @@ module.exports = {
   getTransactions,
   getMonthlyStats,
   addTransaction,
+  deleteTransaction,
   verifyKidsPin,
   verifyParentPin,
   setPins,

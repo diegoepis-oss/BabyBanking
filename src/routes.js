@@ -88,4 +88,22 @@ router.post('/accounts/:id/transactions', requireLogin, (req, res) => {
   }
 });
 
+router.delete('/accounts/:id/transactions/:transactionId', requireLogin, (req, res) => {
+  const { parentPin } = req.body;
+
+  if (!store.verifyParentPin(parentPin)) {
+    return res.status(403).json({ error: 'Password dei genitori sbagliata' });
+  }
+
+  const account = store.getAccount(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Salvadanaio non trovato' });
+
+  try {
+    store.deleteTransaction(req.params.id, req.params.transactionId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(404).json({ error: err.message });
+  }
+});
+
 module.exports = router;

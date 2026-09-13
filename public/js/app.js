@@ -1,8 +1,13 @@
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
 const state = {
   loginPin: '',
   parentPin: '',
   currentAccountId: null,
+  currentAccountColor: '#3B82F6',
   pendingAction: null, // 'deposit' | 'withdraw'
+  pendingDeleteTransactionId: null,
+  deleteParentPin: '',
 };
 
 const views = {
@@ -145,6 +150,7 @@ document.getElementById('btn-back').addEventListener('click', openDashboard);
 async function openAccount(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
+  state.currentAccountColor = account.color;
   document.getElementById('account-avatar').textContent = account.avatar;
   document.getElementById('account-name').textContent = account.name;
   document.getElementById('account-balance').textContent = formatMoney(account.balance);
@@ -167,6 +173,7 @@ async function openAccount(accountId) {
           <span class="history-date">${formatDate(t.date)}</span>
         </div>
         <div class="history-amount ${t.type}">${sign} ${formatMoney(t.amount)}</div>
+        <button class="history-delete" title="Cancella questo movimento" data-id="${t.id}" data-description="${escapeHtml(t.description)}" data-amount="${sign} ${formatMoney(t.amount)}">🗑️</button>
       `;
       list.appendChild(item);
     });
@@ -174,6 +181,12 @@ async function openAccount(accountId) {
 
   showView('account');
 }
+
+document.getElementById('history-list').addEventListener('click', (event) => {
+  const btn = event.target.closest('.history-delete');
+  if (!btn) return;
+  openDeleteConfirm(btn.dataset.id, btn.dataset.description, btn.dataset.amount);
+});
 
 function escapeHtml(str) {
   const div = document.createElement('div');
@@ -189,15 +202,17 @@ document.getElementById('btn-back-stats').addEventListener('click', () => openAc
 async function openStats(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
+  state.currentAccountColor = account.color;
   document.getElementById('stats-avatar').textContent = account.avatar;
   document.getElementById('stats-name').textContent = account.name;
 
   const months = await api('/accounts/' + accountId + '/stats');
-  const chartContainer = document.getElementById('chart-container');
-  renderChart(chartContainer, months);
+  renderChart(document.getElementById('chart-container'), months);
+  renderCumulativeChart(document.getElementById('cumulative-chart-container'), months, account.color);
 
   showView('stats');
-  updateChartScrollHint();
+  updateScrollHint('chart-container', 'chart-scroll-hint');
+  updateScrollHint('cumulative-chart-container', 'cumulative-scroll-hint');
 }
 
 function renderChart(container, months) {
@@ -214,12 +229,12 @@ function renderChart(container, months) {
 
   const maxAbs = Math.max(10, ...months.map((m) => Math.abs(m.net)));
 
-  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  const svg = document.createElementNS(SVG_NS, 'svg');
   svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
   svg.setAttribute('class', 'chart-svg');
 
   // zero line (asse orizzontale di riferimento)
-  const zeroLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  const zeroLine = document.createElementNS(SVG_NS, 'line');
   zeroLine.setAttribute('x1', 0);
   zeroLine.setAttribute('x2', width);
   zeroLine.setAttribute('y1', zeroY);
@@ -233,7 +248,7 @@ function renderChart(container, months) {
     const isPositive = m.net >= 0;
     const barY = isPositive ? zeroY - barHeight : zeroY;
 
-    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const rect = document.createElementNS(SVG_NS, 'rect');
     rect.setAttribute('x', slotCenter - barWidth / 2);
     rect.setAttribute('y', barY);
     rect.setAttribute('width', barWidth);
@@ -243,7 +258,7 @@ function renderChart(container, months) {
     svg.appendChild(rect);
 
     // valore del movimento del mese, sopra o sotto la colonna
-    const netLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const netLabel = document.createElementNS(SVG_NS, 'text');
     netLabel.setAttribute('x', slotCenter);
     netLabel.setAttribute('y', isPositive ? barY - 8 : barY + barHeight + 16);
     netLabel.setAttribute('class', 'chart-net-label');
@@ -252,7 +267,7 @@ function renderChart(container, months) {
     svg.appendChild(netLabel);
 
     // nome del mese
-    const monthLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const monthLabel = document.createElementNS(SVG_NS, 'text');
     monthLabel.setAttribute('x', slotCenter);
     monthLabel.setAttribute('y', height - 34);
     monthLabel.setAttribute('class', 'chart-month-label');
@@ -261,7 +276,7 @@ function renderChart(container, months) {
     svg.appendChild(monthLabel);
 
     // totale accumulato a fine mese
-    const totalLabel = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    const totalLabel = document.createElementNS(SVG_NS, 'text');
     totalLabel.setAttribute('x', slotCenter);
     totalLabel.setAttribute('y', height - 16);
     totalLabel.setAttribute('class', 'chart-total-label');
@@ -273,15 +288,143 @@ function renderChart(container, months) {
   container.appendChild(svg);
 }
 
-function updateChartScrollHint() {
-  const chartContainer = document.getElementById('chart-container');
-  const scrollHint = document.querySelector('.chart-scroll-hint');
-  scrollHint.hidden = chartContainer.scrollWidth <= chartContainer.clientWidth + 1;
+function updateScrollHint(containerId, hintId) {
+  const container = document.getElementById(containerId);
+  const hint = document.getElementById(hintId);
+  hint.hidden = container.scrollWidth <= container.clientWidth + 1;
 }
 
 window.addEventListener('resize', () => {
-  if (!views.stats.hidden) updateChartScrollHint();
+  if (!views.stats.hidden) {
+    updateScrollHint('chart-container', 'chart-scroll-hint');
+    updateScrollHint('cumulative-chart-container', 'cumulative-scroll-hint');
+  }
 });
+
+// niceScale: sceglie un massimo "tondo" e un passo per le righe orizzontali del grafico,
+// cosi' i numeri sull'asse sono facili da leggere (es. 20, 40, 60... invece di 23, 46, 69...)
+function niceScale(maxValue, ticks = 4) {
+  if (maxValue <= 0) return { step: 10, max: 40 };
+  const rawStep = maxValue / ticks;
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const residual = rawStep / magnitude;
+  let niceResidual;
+  if (residual > 5) niceResidual = 10;
+  else if (residual > 2) niceResidual = 5;
+  else if (residual > 1) niceResidual = 2;
+  else niceResidual = 1;
+  const step = niceResidual * magnitude;
+  const max = Math.ceil(maxValue / step) * step;
+  return { step, max };
+}
+
+function renderCumulativeChart(container, months, color) {
+  container.innerHTML = '';
+
+  const width = 600;
+  const height = 280;
+  const leftMargin = 60;
+  const rightMargin = 44;
+  const topMargin = 28;
+  const bottomMargin = 56;
+  const plotWidth = width - leftMargin - rightMargin;
+  const plotHeight = height - topMargin - bottomMargin;
+
+  const maxBalance = Math.max(0, ...months.map((m) => m.balanceAtEnd));
+  const { step, max: niceMax } = niceScale(maxBalance, 4);
+
+  const yForValue = (v) => topMargin + plotHeight - (v / niceMax) * plotHeight;
+  const xForIndex = (i) =>
+    months.length === 1 ? leftMargin + plotWidth / 2 : leftMargin + (plotWidth / (months.length - 1)) * i;
+
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+  svg.setAttribute('class', 'chart-svg');
+
+  // righe orizzontali di riferimento + numeri sull'asse verticale
+  const gridCount = Math.round(niceMax / step);
+  for (let g = 0; g <= gridCount; g++) {
+    const value = g * step;
+    const y = yForValue(value);
+
+    const gridline = document.createElementNS(SVG_NS, 'line');
+    gridline.setAttribute('x1', leftMargin);
+    gridline.setAttribute('x2', width - rightMargin);
+    gridline.setAttribute('y1', y);
+    gridline.setAttribute('y2', y);
+    gridline.setAttribute('class', 'chart-gridline');
+    svg.appendChild(gridline);
+
+    const axisLabel = document.createElementNS(SVG_NS, 'text');
+    axisLabel.setAttribute('x', leftMargin - 8);
+    axisLabel.setAttribute('y', y + 4);
+    axisLabel.setAttribute('text-anchor', 'end');
+    axisLabel.setAttribute('class', 'chart-axis-label');
+    axisLabel.textContent = formatMoney(value);
+    svg.appendChild(axisLabel);
+  }
+
+  const points = months.map((m, i) => ({
+    x: xForIndex(i),
+    y: yForValue(m.balanceAtEnd),
+    value: m.balanceAtEnd,
+    label: m.label,
+  }));
+
+  // lineette tratteggiate che collegano ogni pallino al mese (sotto) e al totale (a sinistra),
+  // per far capire come si "legge" il grafico incrociando i due assi
+  points.forEach((p) => {
+    const vDrop = document.createElementNS(SVG_NS, 'line');
+    vDrop.setAttribute('x1', p.x);
+    vDrop.setAttribute('x2', p.x);
+    vDrop.setAttribute('y1', p.y);
+    vDrop.setAttribute('y2', topMargin + plotHeight);
+    vDrop.setAttribute('class', 'chart-drop-line');
+    svg.appendChild(vDrop);
+
+    const hDrop = document.createElementNS(SVG_NS, 'line');
+    hDrop.setAttribute('x1', leftMargin);
+    hDrop.setAttribute('x2', p.x);
+    hDrop.setAttribute('y1', p.y);
+    hDrop.setAttribute('y2', p.y);
+    hDrop.setAttribute('class', 'chart-drop-line');
+    svg.appendChild(hDrop);
+  });
+
+  const polyline = document.createElementNS(SVG_NS, 'polyline');
+  polyline.setAttribute('points', points.map((p) => `${p.x},${p.y}`).join(' '));
+  polyline.setAttribute('class', 'chart-line');
+  polyline.style.stroke = color;
+  svg.appendChild(polyline);
+
+  points.forEach((p, i) => {
+    const circle = document.createElementNS(SVG_NS, 'circle');
+    circle.setAttribute('cx', p.x);
+    circle.setAttribute('cy', p.y);
+    circle.setAttribute('r', 6);
+    circle.setAttribute('class', 'chart-point');
+    circle.style.fill = color;
+    svg.appendChild(circle);
+
+    const valueLabel = document.createElementNS(SVG_NS, 'text');
+    valueLabel.setAttribute('x', p.x);
+    valueLabel.setAttribute('y', Math.max(14, p.y - 12));
+    valueLabel.setAttribute('text-anchor', 'middle');
+    valueLabel.setAttribute('class', 'chart-net-label');
+    valueLabel.textContent = formatMoney(p.value);
+    svg.appendChild(valueLabel);
+
+    const monthLabel = document.createElementNS(SVG_NS, 'text');
+    monthLabel.setAttribute('x', p.x);
+    monthLabel.setAttribute('y', height - 16);
+    monthLabel.setAttribute('text-anchor', 'middle');
+    monthLabel.setAttribute('class', 'chart-month-label');
+    monthLabel.textContent = months[i].label;
+    svg.appendChild(monthLabel);
+  });
+
+  container.appendChild(svg);
+}
 
 // ---------- MODAL: DEPOSIT / WITHDRAW ----------
 
@@ -380,6 +523,63 @@ async function confirmTransaction() {
     parentError.hidden = false;
     state.parentPin = '';
     renderDots(parentDots, 0);
+  }
+}
+
+// ---------- DELETE TRANSACTION ----------
+
+const deleteOverlay = document.getElementById('delete-overlay');
+const deleteSummary = document.getElementById('delete-summary');
+const deleteParentDots = document.getElementById('delete-parent-dots');
+const deleteParentError = document.getElementById('delete-parent-error');
+
+document.getElementById('delete-modal-close').addEventListener('click', closeDeleteConfirm);
+
+function openDeleteConfirm(transactionId, description, amountLabel) {
+  state.pendingDeleteTransactionId = transactionId;
+  state.deleteParentPin = '';
+  deleteSummary.textContent = `${description} — ${amountLabel}`;
+  deleteParentError.hidden = true;
+  renderDots(deleteParentDots, 0);
+  deleteOverlay.hidden = false;
+}
+
+function closeDeleteConfirm() {
+  deleteOverlay.hidden = true;
+  state.pendingDeleteTransactionId = null;
+}
+
+buildKeypad(
+  document.getElementById('delete-parent-keypad'),
+  (digit) => {
+    if (state.deleteParentPin.length >= 4) return;
+    state.deleteParentPin += digit;
+    renderDots(deleteParentDots, state.deleteParentPin.length);
+    deleteParentError.hidden = true;
+    if (state.deleteParentPin.length === 4) {
+      confirmDeleteTransaction();
+    }
+  },
+  () => {
+    state.deleteParentPin = '';
+    renderDots(deleteParentDots, 0);
+    deleteParentError.hidden = true;
+  }
+);
+
+async function confirmDeleteTransaction() {
+  try {
+    await api('/accounts/' + state.currentAccountId + '/transactions/' + state.pendingDeleteTransactionId, {
+      method: 'DELETE',
+      body: JSON.stringify({ parentPin: state.deleteParentPin }),
+    });
+    closeDeleteConfirm();
+    await openAccount(state.currentAccountId);
+  } catch (err) {
+    deleteParentError.textContent = err.message;
+    deleteParentError.hidden = false;
+    state.deleteParentPin = '';
+    renderDots(deleteParentDots, 0);
   }
 }
 
