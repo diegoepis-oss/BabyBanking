@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>La Banca di Casa</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<!-- SCHERMATA DI ACCESSO -->
+<section id="view-login" class="view">
+  <div class="login-card">
+    <div class="login-emoji">🏦</div>
+    <h1>La Banca di Casa</h1>
+    <p class="subtitle">Inserisci la password per entrare</p>
+    <div id="login-dots" class="pin-dots"></div>
+    <p id="login-error" class="error-text" hidden></p>
+    <div class="keypad" id="login-keypad"></div>
+  </div>
+</section>
+
+<!-- DASHBOARD CON I 3 SALVADANAI -->
+<section id="view-dashboard" class="view" hidden>
+  <header class="topbar">
+    <h1>🏦 La Banca di Casa</h1>
+    <button id="btn-logout" class="btn-link">Esci</button>
+  </header>
+  <div class="cards" id="accounts-cards"></div>
+</section>
+
+<!-- DETTAGLIO SINGOLO CONTO -->
+<section id="view-account" class="view" hidden>
+  <header class="topbar">
+    <button id="btn-back" class="btn-link">← Indietro</button>
+    <button id="btn-logout-2" class="btn-link">Esci</button>
+  </header>
+
+  <div class="account-header" id="account-header">
+    <div class="account-avatar" id="account-avatar"></div>
+    <h2 id="account-name"></h2>
+    <div class="balance-label">Quanto hai risparmiato</div>
+    <div class="balance-amount" id="account-balance">€0,00</div>
+  </div>
+
+  <div class="action-buttons">
+    <button class="btn-action btn-deposit" id="btn-open-deposit">➕ Metti dentro i soldi</button>
+    <button class="btn-action btn-withdraw" id="btn-open-withdraw">➖ Tira fuori i soldi</button>
+  </div>
+
+  <h3 class="history-title">📜 La storia dei tuoi risparmi</h3>
+  <ul class="history-list" id="history-list"></ul>
+</section>
+
+<!-- MODALE OPERAZIONE (DEPOSITO / PRELIEVO) -->
+<div id="modal-overlay" class="modal-overlay" hidden>
+  <div class="modal">
+    <button class="modal-close" id="modal-close">✕</button>
+
+    <div id="modal-step-form">
+      <h2 id="modal-title">➕ Metti dentro i soldi</h2>
+      <label class="field-label">Quanti euro?</label>
+      <input type="number" id="modal-amount" class="field-input" placeholder="0,00" min="0.01" step="0.01" inputmode="decimal" />
+
+      <label class="field-label">Perché? (scrivi una descrizione)</label>
+      <input type="text" id="modal-description" class="field-input" placeholder="Es: Paghetta della settimana" maxlength="120" />
+
+      <label class="field-label">Quando?</label>
+      <input type="date" id="modal-date" class="field-input" />
+
+      <p id="modal-form-error" class="error-text" hidden></p>
+      <button class="btn-primary" id="modal-continue">Continua →</button>
+    </div>
+
+    <div id="modal-step-parent" hidden>
+      <h2>🔒 Serve il permesso di mamma o papà</h2>
+      <p class="subtitle">Inserisci la password dei genitori per confermare</p>
+      <div id="parent-dots" class="pin-dots"></div>
+      <p id="modal-parent-error" class="error-text" hidden></p>
+      <div class="keypad" id="parent-keypad"></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,358 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #FFF7ED;
+  font-family: "Segoe UI", "Trebuchet MS", Verdana, Arial, sans-serif;
+  color: #1E293B;
+}
+
+h1, h2, h3 {
+  margin: 0 0 8px 0;
+}
+
+.view {
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+/* ---------- LOGIN ---------- */
+
+#view-login:not([hidden]) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.login-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 32px 24px;
+  text-align: center;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  width: 100%;
+  max-width: 380px;
+}
+
+.login-emoji {
+  font-size: 64px;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  color: #64748B;
+  margin: 0 0 16px 0;
+}
+
+.pin-dots {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  margin: 20px 0;
+  min-height: 20px;
+}
+
+.pin-dots .dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #E2E8F0;
+  transition: background 0.15s ease;
+}
+
+.pin-dots .dot.filled {
+  background: #F97316;
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.keypad button {
+  font-size: 26px;
+  padding: 18px 0;
+  border: none;
+  border-radius: 18px;
+  background: #F1F5F9;
+  color: #1E293B;
+  cursor: pointer;
+  transition: transform 0.05s ease, background 0.15s ease;
+}
+
+.keypad button:active {
+  transform: scale(0.95);
+  background: #E2E8F0;
+}
+
+.keypad button.key-clear {
+  background: #FEE2E2;
+  color: #B91C1C;
+  font-size: 16px;
+}
+
+.keypad button.key-empty {
+  visibility: hidden;
+}
+
+.error-text {
+  color: #DC2626;
+  font-weight: 600;
+  margin: 4px 0 8px;
+}
+
+/* ---------- TOPBAR ---------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+
+.topbar h1 {
+  font-size: 22px;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #2563EB;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 8px;
+}
+
+/* ---------- DASHBOARD CARDS ---------- */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 18px;
+}
+
+.account-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 24px 16px;
+  text-align: center;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: transform 0.08s ease;
+}
+
+.account-card:active {
+  transform: scale(0.97);
+}
+
+.account-avatar-big {
+  font-size: 56px;
+}
+
+.account-card h3 {
+  font-size: 20px;
+  margin: 8px 0 4px;
+}
+
+.account-card .balance {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+/* ---------- ACCOUNT DETAIL ---------- */
+
+.account-header {
+  text-align: center;
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  margin-bottom: 20px;
+}
+
+.account-avatar {
+  font-size: 64px;
+}
+
+.balance-label {
+  color: #64748B;
+  margin-top: 8px;
+}
+
+.balance-amount {
+  font-size: 40px;
+  font-weight: 800;
+  margin-top: 4px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.btn-action {
+  flex: 1;
+  padding: 18px 8px;
+  border: none;
+  border-radius: 18px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  color: #fff;
+}
+
+.btn-deposit {
+  background: #22C55E;
+}
+
+.btn-withdraw {
+  background: #F97316;
+}
+
+.history-title {
+  margin-bottom: 12px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.history-item {
+  background: #fff;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.history-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-description {
+  font-weight: 600;
+}
+
+.history-date {
+  color: #94A3B8;
+  font-size: 13px;
+}
+
+.history-amount {
+  font-weight: 800;
+  font-size: 17px;
+  white-space: nowrap;
+}
+
+.history-amount.deposit {
+  color: #16A34A;
+}
+
+.history-amount.withdraw {
+  color: #EA580C;
+}
+
+.empty-state {
+  text-align: center;
+  color: #94A3B8;
+  padding: 24px;
+}
+
+/* ---------- MODAL ---------- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.modal-overlay:not([hidden]) {
+  display: flex;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 24px;
+  padding: 28px 22px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  border: none;
+  background: #F1F5F9;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.field-label {
+  display: block;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+
+.field-input {
+  width: 100%;
+  padding: 14px;
+  border-radius: 14px;
+  border: 2px solid #E2E8F0;
+  font-size: 17px;
+}
+
+.field-input:focus {
+  outline: none;
+  border-color: #F97316;
+}
+
+.btn-primary {
+  width: 100%;
+  margin-top: 20px;
+  padding: 16px;
+  border: none;
+  border-radius: 16px;
+  background: #F97316;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+@media (max-width: 420px) {
+  .balance-amount {
+    font-size: 32px;
+  }
+}

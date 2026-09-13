@@ -1,0 +1,16 @@
+{
+  "name": "babybanking",
+  "version": "1.0.0",
+  "description": "Piccola banca di famiglia per Arturo, Santiago e Sofia",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "set-pins": "node scripts/set-pins.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0"
+  }
+}
