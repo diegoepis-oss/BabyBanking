@@ -45,6 +45,12 @@ router.get('/accounts/:id/transactions', requireLogin, (req, res) => {
   res.json(store.getTransactions(req.params.id));
 });
 
+router.get('/accounts/:id/stats', requireLogin, (req, res) => {
+  const account = store.getAccount(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Salvadanaio non trovato' });
+  res.json(store.getMonthlyStats(req.params.id, 6));
+});
+
 router.post('/accounts/:id/transactions', requireLogin, (req, res) => {
   const { type, amount, description, date, parentPin } = req.body;
 
@@ -79,6 +85,24 @@ router.post('/accounts/:id/transactions', requireLogin, (req, res) => {
     res.json(transaction);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+});
+
+router.delete('/accounts/:id/transactions/:transactionId', requireLogin, (req, res) => {
+  const { parentPin } = req.body;
+
+  if (!store.verifyParentPin(parentPin)) {
+    return res.status(403).json({ error: 'Password dei genitori sbagliata' });
+  }
+
+  const account = store.getAccount(req.params.id);
+  if (!account) return res.status(404).json({ error: 'Salvadanaio non trovato' });
+
+  try {
+    store.deleteTransaction(req.params.id, req.params.transactionId);
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(404).json({ error: err.message });
   }
 });
 

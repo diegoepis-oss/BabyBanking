@@ -221,8 +221,149 @@ h1, h2, h3 {
   background: #F97316;
 }
 
+.btn-stats {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 24px;
+  border: 2px solid #E2E8F0;
+  border-radius: 16px;
+  background: #fff;
+  color: #1E293B;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .history-title {
-  margin-bottom: 12px;
+  margin: 28px 0 12px;
+}
+
+/* ---------- STATISTICS / CHART ---------- */
+
+.chart-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 20px 16px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+}
+
+.chart-explainer {
+  color: #475569;
+  line-height: 1.5;
+  margin: 0 0 16px;
+}
+
+.text-green {
+  color: #16A34A;
+}
+
+.text-orange {
+  color: #EA580C;
+}
+
+.chart-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.chart-svg {
+  width: 100%;
+  min-width: 480px;
+  height: auto;
+  display: block;
+}
+
+.chart-axis {
+  stroke: #CBD5E1;
+  stroke-width: 2;
+  stroke-dasharray: 4 4;
+}
+
+.chart-bar-positive {
+  fill: #22C55E;
+}
+
+.chart-bar-negative {
+  fill: #F97316;
+}
+
+.chart-net-label {
+  font-size: 13px;
+  font-weight: 700;
+  fill: #1E293B;
+}
+
+.chart-month-label {
+  font-size: 13px;
+  font-weight: 700;
+  fill: #334155;
+}
+
+.chart-total-label {
+  font-size: 11px;
+  fill: #94A3B8;
+}
+
+.chart-gridline {
+  stroke: #E2E8F0;
+  stroke-width: 1;
+}
+
+.chart-axis-label {
+  font-size: 12px;
+  fill: #94A3B8;
+}
+
+.chart-drop-line {
+  stroke: #CBD5E1;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.chart-line {
+  fill: none;
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.chart-point {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.chart-scroll-hint {
+  text-align: center;
+  color: #94A3B8;
+  font-size: 13px;
+  margin: 8px 0 0;
+}
+
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.legend-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.legend-green {
+  background: #22C55E;
+}
+
+.legend-orange {
+  background: #F97316;
 }
 
 .history-list {
@@ -273,6 +414,21 @@ h1, h2, h3 {
   color: #EA580C;
 }
 
+.history-delete {
+  border: none;
+  background: #F8FAFC;
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.history-delete:active {
+  background: #FEE2E2;
+}
+
 .empty-state {
   text-align: center;
   color: #94A3B8;
@@ -317,6 +473,15 @@ h1, h2, h3 {
   height: 32px;
   font-size: 16px;
   cursor: pointer;
+}
+
+.delete-summary {
+  background: #F8FAFC;
+  border-radius: 14px;
+  padding: 14px;
+  font-weight: 700;
+  text-align: center;
+  margin: 12px 0;
 }
 
 .field-label {
