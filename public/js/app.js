@@ -1,13 +1,10 @@
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
 const state = {
-  loginPin: '',
-  parentPin: '',
   currentAccountId: null,
   currentAccountColor: '#3B82F6',
   pendingAction: null, // 'deposit' | 'withdraw'
   pendingDeleteTransactionId: null,
-  deleteParentPin: '',
 };
 
 const views = {
@@ -24,6 +21,10 @@ function showView(name) {
 
 function formatMoney(amount) {
   return amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
+}
+
+function avatarBadgeStyle(color) {
+  return `background:${color}1F; box-shadow: inset 0 0 0 3px ${color}55;`;
 }
 
 function formatDate(isoString) {
@@ -45,8 +46,15 @@ async function api(path, options = {}) {
 }
 
 // ---------- KEYPAD HELPER ----------
+//
+// Il PIN si può digitare cliccando i tasti sullo schermo oppure usando i
+// tasti numerici della tastiera del PC; in entrambi i casi va confermato con
+// il tasto OK (o il tasto Invio). Un solo "pinpad" alla volta è "attivo": è
+// quello che riceve i tasti premuti sulla tastiera fisica.
 
-function buildKeypad(container, onDigit, onClear) {
+let activeKeypad = null;
+
+function buildKeypad(container, onDigit, onClear, onConfirm) {
   container.innerHTML = '';
   const layout = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'clear', '0', 'ok'];
   layout.forEach((key) => {
@@ -56,7 +64,9 @@ function buildKeypad(container, onDigit, onClear) {
       btn.className = 'key-clear';
       btn.addEventListener('click', onClear);
     } else if (key === 'ok') {
-      btn.className = 'key-empty';
+      btn.textContent = 'OK';
+      btn.className = 'key-ok';
+      btn.addEventListener('click', onConfirm);
     } else {
       btn.textContent = key;
       btn.addEventListener('click', () => onDigit(key));
@@ -65,50 +75,101 @@ function buildKeypad(container, onDigit, onClear) {
   });
 }
 
-function renderDots(container, length, max = 4) {
+function renderDots(container, length, expectedLength = 4) {
   container.innerHTML = '';
-  for (let i = 0; i < max; i++) {
+  const total = Math.max(length, expectedLength);
+  for (let i = 0; i < total; i++) {
     const dot = document.createElement('div');
     dot.className = 'dot' + (i < length ? ' filled' : '');
     container.appendChild(dot);
   }
 }
 
+function createPinPad({ keypadEl, dotsEl, errorEl, maxLength = 8, expectedLength = 4, onSubmit }) {
+  let pin = '';
+
+  function render() {
+    renderDots(dotsEl, pin.length, expectedLength);
+  }
+
+  function appendDigit(digit) {
+    if (pin.length >= maxLength) return;
+    pin += digit;
+    errorEl.hidden = true;
+    render();
+  }
+
+  function backspace() {
+    pin = pin.slice(0, -1);
+    errorEl.hidden = true;
+    render();
+  }
+
+  function clear() {
+    pin = '';
+    errorEl.hidden = true;
+    render();
+  }
+
+  function confirm() {
+    if (!pin) return;
+    onSubmit(pin);
+  }
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.hidden = false;
+    pin = '';
+    render();
+  }
+
+  function activate() {
+    activeKeypad = pad;
+  }
+
+  function deactivate() {
+    if (activeKeypad === pad) activeKeypad = null;
+  }
+
+  buildKeypad(keypadEl, appendDigit, clear, confirm);
+
+  const pad = { appendDigit, backspace, clear, confirm, showError, activate, deactivate };
+  return pad;
+}
+
+document.addEventListener('keydown', (event) => {
+  if (!activeKeypad) return;
+  if (event.key >= '0' && event.key <= '9') {
+    event.preventDefault();
+    activeKeypad.appendDigit(event.key);
+  } else if (event.key === 'Backspace') {
+    event.preventDefault();
+    activeKeypad.backspace();
+  } else if (event.key === 'Enter') {
+    event.preventDefault();
+    activeKeypad.confirm();
+  }
+});
+
 // ---------- LOGIN ----------
 
-const loginDots = document.getElementById('login-dots');
-const loginError = document.getElementById('login-error');
+const loginPad = createPinPad({
+  keypadEl: document.getElementById('login-keypad'),
+  dotsEl: document.getElementById('login-dots'),
+  errorEl: document.getElementById('login-error'),
+  onSubmit: attemptLogin,
+});
+loginPad.clear();
+loginPad.activate();
 
-renderDots(loginDots, 0);
-
-buildKeypad(
-  document.getElementById('login-keypad'),
-  (digit) => {
-    if (state.loginPin.length >= 4) return;
-    state.loginPin += digit;
-    renderDots(loginDots, state.loginPin.length);
-    loginError.hidden = true;
-    if (state.loginPin.length === 4) {
-      attemptLogin();
-    }
-  },
-  () => {
-    state.loginPin = '';
-    renderDots(loginDots, 0);
-    loginError.hidden = true;
-  }
-);
-
-async function attemptLogin() {
+async function attemptLogin(pin) {
   try {
-    await api('/login', { method: 'POST', body: JSON.stringify({ pin: state.loginPin }) });
-    state.loginPin = '';
+    await api('/login', { method: 'POST', body: JSON.stringify({ pin }) });
+    loginPad.clear();
+    loginPad.deactivate();
     await openDashboard();
   } catch (err) {
-    loginError.textContent = err.message;
-    loginError.hidden = false;
-    state.loginPin = '';
-    renderDots(loginDots, 0);
+    loginPad.showError(err.message);
   }
 }
 
@@ -124,9 +185,8 @@ async function openDashboard() {
     card.className = 'account-card';
     card.style.borderColor = acc.color;
     card.innerHTML = `
-      <div class="account-avatar-big">${acc.avatar}</div>
+      <div class="account-avatar-big" style="${avatarBadgeStyle(acc.color)}">${acc.avatar}</div>
       <h3>${acc.name}</h3>
-      <div class="balance" style="color:${acc.color}">${formatMoney(acc.balance)}</div>
     `;
     card.addEventListener('click', () => openAccount(acc.id));
     accountsCards.appendChild(card);
@@ -140,6 +200,7 @@ document.getElementById('btn-logout-3').addEventListener('click', logout);
 
 async function logout() {
   await api('/logout', { method: 'POST' });
+  loginPad.activate();
   showView('login');
 }
 
@@ -151,7 +212,9 @@ async function openAccount(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
   state.currentAccountColor = account.color;
-  document.getElementById('account-avatar').textContent = account.avatar;
+  const accountAvatarEl = document.getElementById('account-avatar');
+  accountAvatarEl.textContent = account.avatar;
+  accountAvatarEl.setAttribute('style', avatarBadgeStyle(account.color));
   document.getElementById('account-name').textContent = account.name;
   document.getElementById('account-balance').textContent = formatMoney(account.balance);
   document.getElementById('account-balance').style.color = account.color;
@@ -203,7 +266,9 @@ async function openStats(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
   state.currentAccountColor = account.color;
-  document.getElementById('stats-avatar').textContent = account.avatar;
+  const statsAvatarEl = document.getElementById('stats-avatar');
+  statsAvatarEl.textContent = account.avatar;
+  statsAvatarEl.setAttribute('style', avatarBadgeStyle(account.color));
   document.getElementById('stats-name').textContent = account.name;
 
   const months = await api('/accounts/' + accountId + '/stats');
@@ -443,24 +508,31 @@ document.getElementById('btn-open-deposit').addEventListener('click', () => open
 document.getElementById('btn-open-withdraw').addEventListener('click', () => openModal('withdraw'));
 document.getElementById('modal-close').addEventListener('click', closeModal);
 
+const parentPad = createPinPad({
+  keypadEl: document.getElementById('parent-keypad'),
+  dotsEl: parentDots,
+  errorEl: parentError,
+  onSubmit: confirmTransaction,
+});
+
 function openModal(action) {
   state.pendingAction = action;
-  state.parentPin = '';
   modalTitle.textContent = action === 'deposit' ? '➕ Aggiungi soldi ai risparmi' : '➖ Prendi soldi dai risparmi';
   modalAmount.value = '';
   modalDescription.value = '';
   modalDate.value = new Date().toISOString().slice(0, 10);
   modalFormError.hidden = true;
-  parentError.hidden = true;
   modalStepForm.hidden = false;
   modalStepParent.hidden = true;
-  renderDots(parentDots, 0);
+  parentPad.clear();
+  parentPad.deactivate();
   modalOverlay.hidden = false;
 }
 
 function closeModal() {
   modalOverlay.hidden = true;
   state.pendingAction = null;
+  parentPad.deactivate();
 }
 
 document.getElementById('modal-continue').addEventListener('click', () => {
@@ -480,31 +552,10 @@ document.getElementById('modal-continue').addEventListener('click', () => {
 
   modalStepForm.hidden = true;
   modalStepParent.hidden = false;
+  parentPad.activate();
 });
 
-buildKeypad(
-  parentKeypadEl(),
-  (digit) => {
-    if (state.parentPin.length >= 4) return;
-    state.parentPin += digit;
-    renderDots(parentDots, state.parentPin.length);
-    parentError.hidden = true;
-    if (state.parentPin.length === 4) {
-      confirmTransaction();
-    }
-  },
-  () => {
-    state.parentPin = '';
-    renderDots(parentDots, 0);
-    parentError.hidden = true;
-  }
-);
-
-function parentKeypadEl() {
-  return document.getElementById('parent-keypad');
-}
-
-async function confirmTransaction() {
+async function confirmTransaction(pin) {
   try {
     await api('/accounts/' + state.currentAccountId + '/transactions', {
       method: 'POST',
@@ -513,16 +564,15 @@ async function confirmTransaction() {
         amount: modalAmount.value,
         description: modalDescription.value.trim(),
         date: modalDate.value ? new Date(modalDate.value).toISOString() : undefined,
-        parentPin: state.parentPin,
+        parentPin: pin,
       }),
     });
+    parentPad.clear();
+    parentPad.deactivate();
     closeModal();
     await openAccount(state.currentAccountId);
   } catch (err) {
-    parentError.textContent = err.message;
-    parentError.hidden = false;
-    state.parentPin = '';
-    renderDots(parentDots, 0);
+    parentPad.showError(err.message);
   }
 }
 
@@ -535,51 +585,39 @@ const deleteParentError = document.getElementById('delete-parent-error');
 
 document.getElementById('delete-modal-close').addEventListener('click', closeDeleteConfirm);
 
+const deletePad = createPinPad({
+  keypadEl: document.getElementById('delete-parent-keypad'),
+  dotsEl: deleteParentDots,
+  errorEl: deleteParentError,
+  onSubmit: confirmDeleteTransaction,
+});
+
 function openDeleteConfirm(transactionId, description, amountLabel) {
   state.pendingDeleteTransactionId = transactionId;
-  state.deleteParentPin = '';
   deleteSummary.textContent = `${description} — ${amountLabel}`;
-  deleteParentError.hidden = true;
-  renderDots(deleteParentDots, 0);
+  deletePad.clear();
+  deletePad.activate();
   deleteOverlay.hidden = false;
 }
 
 function closeDeleteConfirm() {
   deleteOverlay.hidden = true;
   state.pendingDeleteTransactionId = null;
+  deletePad.deactivate();
 }
 
-buildKeypad(
-  document.getElementById('delete-parent-keypad'),
-  (digit) => {
-    if (state.deleteParentPin.length >= 4) return;
-    state.deleteParentPin += digit;
-    renderDots(deleteParentDots, state.deleteParentPin.length);
-    deleteParentError.hidden = true;
-    if (state.deleteParentPin.length === 4) {
-      confirmDeleteTransaction();
-    }
-  },
-  () => {
-    state.deleteParentPin = '';
-    renderDots(deleteParentDots, 0);
-    deleteParentError.hidden = true;
-  }
-);
-
-async function confirmDeleteTransaction() {
+async function confirmDeleteTransaction(pin) {
   try {
     await api('/accounts/' + state.currentAccountId + '/transactions/' + state.pendingDeleteTransactionId, {
       method: 'DELETE',
-      body: JSON.stringify({ parentPin: state.deleteParentPin }),
+      body: JSON.stringify({ parentPin: pin }),
     });
+    deletePad.clear();
+    deletePad.deactivate();
     closeDeleteConfirm();
     await openAccount(state.currentAccountId);
   } catch (err) {
-    deleteParentError.textContent = err.message;
-    deleteParentError.hidden = false;
-    state.deleteParentPin = '';
-    renderDots(deleteParentDots, 0);
+    deletePad.showError(err.message);
   }
 }
 
@@ -589,6 +627,7 @@ async function confirmDeleteTransaction() {
   try {
     const session = await api('/session');
     if (session.loggedIn) {
+      loginPad.deactivate();
       await openDashboard();
       return;
     }
