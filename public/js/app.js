@@ -23,6 +23,10 @@ function formatMoney(amount) {
   return amount.toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 }
 
+function avatarBadgeStyle(color) {
+  return `background:${color}1F; box-shadow: inset 0 0 0 3px ${color}55;`;
+}
+
 function formatDate(isoString) {
   const d = new Date(isoString);
   return d.toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -71,20 +75,21 @@ function buildKeypad(container, onDigit, onClear, onConfirm) {
   });
 }
 
-function renderDots(container, length) {
+function renderDots(container, length, expectedLength = 4) {
   container.innerHTML = '';
-  for (let i = 0; i < length; i++) {
+  const total = Math.max(length, expectedLength);
+  for (let i = 0; i < total; i++) {
     const dot = document.createElement('div');
-    dot.className = 'dot filled';
+    dot.className = 'dot' + (i < length ? ' filled' : '');
     container.appendChild(dot);
   }
 }
 
-function createPinPad({ keypadEl, dotsEl, errorEl, maxLength = 8, onSubmit }) {
+function createPinPad({ keypadEl, dotsEl, errorEl, maxLength = 8, expectedLength = 4, onSubmit }) {
   let pin = '';
 
   function render() {
-    renderDots(dotsEl, pin.length);
+    renderDots(dotsEl, pin.length, expectedLength);
   }
 
   function appendDigit(digit) {
@@ -154,6 +159,7 @@ const loginPad = createPinPad({
   errorEl: document.getElementById('login-error'),
   onSubmit: attemptLogin,
 });
+loginPad.clear();
 loginPad.activate();
 
 async function attemptLogin(pin) {
@@ -179,7 +185,7 @@ async function openDashboard() {
     card.className = 'account-card';
     card.style.borderColor = acc.color;
     card.innerHTML = `
-      <div class="account-avatar-big">${acc.avatar}</div>
+      <div class="account-avatar-big" style="${avatarBadgeStyle(acc.color)}">${acc.avatar}</div>
       <h3>${acc.name}</h3>
     `;
     card.addEventListener('click', () => openAccount(acc.id));
@@ -206,7 +212,9 @@ async function openAccount(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
   state.currentAccountColor = account.color;
-  document.getElementById('account-avatar').textContent = account.avatar;
+  const accountAvatarEl = document.getElementById('account-avatar');
+  accountAvatarEl.textContent = account.avatar;
+  accountAvatarEl.setAttribute('style', avatarBadgeStyle(account.color));
   document.getElementById('account-name').textContent = account.name;
   document.getElementById('account-balance').textContent = formatMoney(account.balance);
   document.getElementById('account-balance').style.color = account.color;
@@ -258,7 +266,9 @@ async function openStats(accountId) {
   state.currentAccountId = accountId;
   const account = await api('/accounts/' + accountId);
   state.currentAccountColor = account.color;
-  document.getElementById('stats-avatar').textContent = account.avatar;
+  const statsAvatarEl = document.getElementById('stats-avatar');
+  statsAvatarEl.textContent = account.avatar;
+  statsAvatarEl.setAttribute('style', avatarBadgeStyle(account.color));
   document.getElementById('stats-name').textContent = account.name;
 
   const months = await api('/accounts/' + accountId + '/stats');

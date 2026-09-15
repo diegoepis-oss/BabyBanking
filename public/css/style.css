@@ -2,17 +2,36 @@
   box-sizing: border-box;
 }
 
+:root {
+  --font-display: "Baloo 2", "Segoe UI", "Trebuchet MS", Verdana, Arial, sans-serif;
+  --shadow-card: 0 10px 24px rgba(30, 41, 59, 0.08), 0 2px 6px rgba(30, 41, 59, 0.04);
+  --shadow-card-hover: 0 16px 32px rgba(30, 41, 59, 0.12), 0 4px 10px rgba(30, 41, 59, 0.06);
+}
+
 html, body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: #FFF7ED;
-  font-family: "Segoe UI", "Trebuchet MS", Verdana, Arial, sans-serif;
   color: #1E293B;
+}
+
+body {
+  font-family: "Segoe UI", "Trebuchet MS", Verdana, Arial, sans-serif;
+  background-color: #FFF7ED;
+  background-image:
+    radial-gradient(circle at 10% 10%, rgba(59, 130, 246, 0.10), transparent 40%),
+    radial-gradient(circle at 90% 15%, rgba(236, 72, 153, 0.10), transparent 42%),
+    radial-gradient(circle at 50% 100%, rgba(249, 115, 22, 0.08), transparent 45%);
+  background-attachment: fixed;
 }
 
 h1, h2, h3 {
   margin: 0 0 8px 0;
+  font-family: var(--font-display);
+}
+
+button {
+  font-family: var(--font-display);
 }
 
 .view {
@@ -36,7 +55,7 @@ h1, h2, h3 {
   border-radius: 28px;
   padding: 32px 24px;
   text-align: center;
-  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  box-shadow: var(--shadow-card);
   width: 100%;
   max-width: 380px;
 }
@@ -44,6 +63,7 @@ h1, h2, h3 {
 .login-emoji {
   font-size: 64px;
   margin-bottom: 8px;
+  filter: drop-shadow(0 6px 10px rgba(37, 99, 235, 0.18));
 }
 
 .subtitle {
@@ -80,17 +100,24 @@ h1, h2, h3 {
 
 .keypad button {
   font-size: 26px;
+  font-weight: 600;
   padding: 18px 0;
   border: none;
   border-radius: 18px;
   background: #F1F5F9;
   color: #1E293B;
   cursor: pointer;
-  transition: transform 0.05s ease, background 0.15s ease;
+  box-shadow: 0 3px 0 #D9E1EC;
+  transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease;
+}
+
+.keypad button:hover {
+  background: #E9EEF5;
 }
 
 .keypad button:active {
-  transform: scale(0.95);
+  transform: translateY(3px);
+  box-shadow: 0 0 0 #D9E1EC;
   background: #E2E8F0;
 }
 
@@ -98,6 +125,16 @@ h1, h2, h3 {
   background: #FEE2E2;
   color: #B91C1C;
   font-size: 16px;
+  box-shadow: 0 3px 0 #FCA5A5;
+}
+
+.keypad button.key-clear:hover {
+  background: #FEDADA;
+}
+
+.keypad button.key-clear:active {
+  box-shadow: 0 0 0 #FCA5A5;
+  background: #FCA5A5;
 }
 
 .keypad button.key-ok {
@@ -105,6 +142,16 @@ h1, h2, h3 {
   color: #fff;
   font-size: 18px;
   font-weight: 700;
+  box-shadow: 0 3px 0 #15803D;
+}
+
+.keypad button.key-ok:hover {
+  background: #1EAE53;
+}
+
+.keypad button.key-ok:active {
+  box-shadow: 0 0 0 #15803D;
+  background: #16A34A;
 }
 
 .error-text {
@@ -120,6 +167,7 @@ h1, h2, h3 {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 24px;
+  gap: 12px;
 }
 
 .topbar h1 {
@@ -127,13 +175,30 @@ h1, h2, h3 {
 }
 
 .btn-link {
-  background: none;
+  background: #fff;
   border: none;
   color: #2563EB;
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 8px;
+  padding: 10px 18px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.08s ease, box-shadow 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-link:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+.btn-link:active {
+  transform: scale(0.96);
+}
+
+.btn-exit {
+  color: #B91C1C;
 }
 
 /* ---------- DASHBOARD CARDS ---------- */
@@ -147,12 +212,17 @@ h1, h2, h3 {
 .account-card {
   background: #fff;
   border-radius: 24px;
-  padding: 24px 16px;
+  padding: 28px 16px 24px;
   text-align: center;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   cursor: pointer;
   border: 3px solid transparent;
-  transition: transform 0.08s ease;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.account-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-card-hover);
 }
 
 .account-card:active {
@@ -160,12 +230,18 @@ h1, h2, h3 {
 }
 
 .account-avatar-big {
-  font-size: 56px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 92px;
+  height: 92px;
+  font-size: 46px;
+  border-radius: 50%;
 }
 
 .account-card h3 {
   font-size: 20px;
-  margin: 8px 0 4px;
+  margin: 12px 0 4px;
 }
 
 /* ---------- ACCOUNT DETAIL ---------- */
@@ -175,12 +251,19 @@ h1, h2, h3 {
   background: #fff;
   border-radius: 24px;
   padding: 28px 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
   margin-bottom: 20px;
 }
 
 .account-avatar {
-  font-size: 64px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 104px;
+  height: 104px;
+  font-size: 54px;
+  border-radius: 50%;
+  margin-bottom: 4px;
 }
 
 .balance-label {
@@ -189,6 +272,7 @@ h1, h2, h3 {
 }
 
 .balance-amount {
+  font-family: var(--font-display);
   font-size: 40px;
   font-weight: 800;
   margin-top: 4px;
@@ -209,6 +293,17 @@ h1, h2, h3 {
   font-weight: 700;
   cursor: pointer;
   color: #fff;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-action:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.btn-action:active {
+  transform: scale(0.97);
 }
 
 .btn-deposit {
@@ -223,13 +318,24 @@ h1, h2, h3 {
   width: 100%;
   padding: 14px;
   margin-bottom: 24px;
-  border: 2px solid #E2E8F0;
+  border: none;
   border-radius: 16px;
   background: #fff;
   color: #1E293B;
   font-size: 16px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-stats:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card-hover);
+}
+
+.btn-stats:active {
+  transform: scale(0.98);
 }
 
 .history-title {
@@ -242,7 +348,7 @@ h1, h2, h3 {
   background: #fff;
   border-radius: 24px;
   padding: 20px 16px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+  box-shadow: var(--shadow-card);
 }
 
 .chart-explainer {
@@ -286,18 +392,21 @@ h1, h2, h3 {
 }
 
 .chart-net-label {
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   fill: #1E293B;
 }
 
 .chart-month-label {
+  font-family: var(--font-display);
   font-size: 13px;
   font-weight: 700;
   fill: #334155;
 }
 
 .chart-total-label {
+  font-family: var(--font-display);
   font-size: 11px;
   fill: #94A3B8;
 }
@@ -308,6 +417,7 @@ h1, h2, h3 {
 }
 
 .chart-axis-label {
+  font-family: var(--font-display);
   font-size: 12px;
   fill: #94A3B8;
 }
@@ -382,6 +492,11 @@ h1, h2, h3 {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
+  transition: box-shadow 0.12s ease;
+}
+
+.history-item:hover {
+  box-shadow: var(--shadow-card);
 }
 
 .history-info {
@@ -399,6 +514,7 @@ h1, h2, h3 {
 }
 
 .history-amount {
+  font-family: var(--font-display);
   font-weight: 800;
   font-size: 17px;
   white-space: nowrap;
@@ -421,10 +537,16 @@ h1, h2, h3 {
   font-size: 18px;
   cursor: pointer;
   flex-shrink: 0;
+  transition: background 0.12s ease, transform 0.08s ease;
+}
+
+.history-delete:hover {
+  background: #FEE2E2;
 }
 
 .history-delete:active {
-  background: #FEE2E2;
+  background: #FCA5A5;
+  transform: scale(0.92);
 }
 
 .empty-state {
@@ -458,6 +580,7 @@ h1, h2, h3 {
   position: relative;
   max-height: 90vh;
   overflow-y: auto;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.20);
 }
 
 .modal-close {
@@ -471,6 +594,15 @@ h1, h2, h3 {
   height: 32px;
   font-size: 16px;
   cursor: pointer;
+  transition: background 0.12s ease, transform 0.08s ease;
+}
+
+.modal-close:hover {
+  background: #E2E8F0;
+}
+
+.modal-close:active {
+  transform: scale(0.9);
 }
 
 .delete-summary {
@@ -512,6 +644,17 @@ h1, h2, h3 {
   font-size: 18px;
   font-weight: 700;
   cursor: pointer;
+  box-shadow: 0 6px 16px rgba(249, 115, 22, 0.35);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(249, 115, 22, 0.4);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
 }
 
 @media (max-width: 420px) {
