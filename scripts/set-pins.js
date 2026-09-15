@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '.env.local' });
+
 const readline = require('readline');
 const store = require('../src/store');
 
@@ -33,7 +35,11 @@ function isValidPin(pin) {
     return;
   }
 
-  store.setPins({ kidsPin: kidsPin || undefined, parentPin: parentPin || undefined });
-  console.log('\nFatto! Le password sono state aggiornate.');
+  try {
+    await store.setPins({ kidsPin: kidsPin || undefined, parentPin: parentPin || undefined });
+    console.log('\nFatto! Le password sono state aggiornate.');
+  } catch (err) {
+    console.log('\nErrore nel salvare le password:', err.message);
+  }
   rl.close();
 })();

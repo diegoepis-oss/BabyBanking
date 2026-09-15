@@ -1,126 +1,133 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
 
-const DB_PATH = path.join(__dirname, '..', 'data', 'db.json');
+function getEnv(name) {
+  const value = process.env[name];
+  if (!value) {
+    throw new Error(
+      `Manca la variabile d'ambiente ${name}. Configurala su Vercel (Settings -> Environment Variables) ` +
+        `oppure nel file .env.local se stai lavorando in locale.`
+    );
+  }
+  return value;
+}
 
-const DEFAULT_KIDS_PIN = '1234';
-const DEFAULT_PARENT_PIN = '2026';
+const supabase = createClient(getEnv('SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'), {
+  auth: { persistSession: false },
+});
 
-function defaultData() {
+function mapTransaction(row) {
   return {
-    settings: {
-      kidsPinHash: bcrypt.hashSync(DEFAULT_KIDS_PIN, 10),
-      parentPinHash: bcrypt.hashSync(DEFAULT_PARENT_PIN, 10),
-    },
-    accounts: [
-      { id: 'arturo', name: 'Arturo', avatar: '🦁', color: '#3B82F6' },
-      { id: 'santiago', name: 'Santiago', avatar: '🐯', color: '#F97316' },
-      { id: 'sofia', name: 'Sofia', avatar: '🦄', color: '#EC4899' },
-    ],
-    transactions: [],
+    id: row.id,
+    accountId: row.account_id,
+    type: row.type,
+    amount: Number(row.amount),
+    description: row.description,
+    date: row.date,
+    balanceAfter: Number(row.balance_after),
+    createdAt: row.created_at,
   };
 }
 
-function ensureDb() {
-  if (!fs.existsSync(DB_PATH)) {
-    fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
-    writeDb(defaultData());
-  }
+function computeBalance(transactions) {
+  return transactions.reduce((sum, t) => sum + (t.type === 'deposit' ? t.amount : -t.amount), 0);
 }
 
-function readDb() {
-  ensureDb();
-  const raw = fs.readFileSync(DB_PATH, 'utf8');
-  return JSON.parse(raw);
+async function getAllTransactions(accountId) {
+  const { data, error } = await supabase.from('transactions').select('*').eq('account_id', accountId);
+  if (error) throw new Error(error.message);
+  return data.map(mapTransaction);
 }
 
-function writeDb(data) {
-  const tmpPath = DB_PATH + '.tmp';
-  fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf8');
-  fs.renameSync(tmpPath, DB_PATH);
+async function getAccounts() {
+  const { data: accounts, error } = await supabase.from('accounts').select('*').order('id');
+  if (error) throw new Error(error.message);
+
+  return Promise.all(
+    accounts.map(async (acc) => ({
+      ...acc,
+      balance: computeBalance(await getAllTransactions(acc.id)),
+    }))
+  );
 }
 
-function getAccounts() {
-  const db = readDb();
-  return db.accounts.map((acc) => ({
-    ...acc,
-    balance: computeBalance(db, acc.id),
-  }));
-}
-
-function getAccount(accountId) {
-  const db = readDb();
-  const acc = db.accounts.find((a) => a.id === accountId);
+async function getAccount(accountId) {
+  const { data: acc, error } = await supabase.from('accounts').select('*').eq('id', accountId).maybeSingle();
+  if (error) throw new Error(error.message);
   if (!acc) return null;
-  return { ...acc, balance: computeBalance(db, acc.id) };
+
+  return { ...acc, balance: computeBalance(await getAllTransactions(accountId)) };
 }
 
-function computeBalance(db, accountId) {
-  return db.transactions
-    .filter((t) => t.accountId === accountId)
-    .reduce((sum, t) => sum + (t.type === 'deposit' ? t.amount : -t.amount), 0);
+async function getTransactions(accountId) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('date', { ascending: false })
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(error.message);
+  return data.map(mapTransaction);
 }
 
-function getTransactions(accountId) {
-  const db = readDb();
-  return db.transactions
-    .filter((t) => t.accountId === accountId)
-    .sort((a, b) => new Date(b.date) - new Date(a.date) || b.id.localeCompare(a.id));
-}
+async function addTransaction({ accountId, type, amount, description, date }) {
+  const account = await getAccount(accountId);
+  if (!account) throw new Error('Conto non trovato');
 
-function addTransaction({ accountId, type, amount, description, date }) {
-  const db = readDb();
-  const acc = db.accounts.find((a) => a.id === accountId);
-  if (!acc) throw new Error('Conto non trovato');
-
-  const currentBalance = computeBalance(db, accountId);
-  if (type === 'withdraw' && amount > currentBalance) {
+  if (type === 'withdraw' && amount > account.balance) {
     throw new Error('Non ci sono abbastanza risparmi in questo salvadanaio');
   }
 
   const balanceAfter =
-    type === 'deposit' ? currentBalance + amount : currentBalance - amount;
+    type === 'deposit' ? account.balance + amount : account.balance - amount;
 
-  const transaction = {
-    id: crypto.randomUUID(),
-    accountId,
-    type,
-    amount,
-    description,
-    date: date || new Date().toISOString(),
-    balanceAfter,
-    createdAt: new Date().toISOString(),
-  };
+  const { data, error } = await supabase
+    .from('transactions')
+    .insert({
+      account_id: accountId,
+      type,
+      amount,
+      description,
+      date: date || new Date().toISOString(),
+      balance_after: Math.round(balanceAfter * 100) / 100,
+    })
+    .select()
+    .single();
+  if (error) throw new Error(error.message);
 
-  db.transactions.push(transaction);
-  writeDb(db);
-  return transaction;
+  return mapTransaction(data);
 }
 
-function deleteTransaction(accountId, transactionId) {
-  const db = readDb();
-  const index = db.transactions.findIndex(
-    (t) => t.id === transactionId && t.accountId === accountId
-  );
-  if (index === -1) throw new Error('Movimento non trovato');
+async function deleteTransaction(accountId, transactionId) {
+  const { error, count } = await supabase
+    .from('transactions')
+    .delete({ count: 'exact' })
+    .eq('id', transactionId)
+    .eq('account_id', accountId);
+  if (error) throw new Error(error.message);
+  if (!count) throw new Error('Movimento non trovato');
 
-  db.transactions.splice(index, 1);
-  recomputeBalanceSnapshots(db, accountId);
-  writeDb(db);
+  await recomputeBalanceSnapshots(accountId);
 }
 
-function recomputeBalanceSnapshots(db, accountId) {
-  const accountTx = db.transactions
-    .filter((t) => t.accountId === accountId)
-    .sort((a, b) => new Date(a.date) - new Date(b.date) || a.createdAt.localeCompare(b.createdAt));
+async function recomputeBalanceSnapshots(accountId) {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('date', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
 
   let running = 0;
-  accountTx.forEach((t) => {
-    running += t.type === 'deposit' ? t.amount : -t.amount;
-    t.balanceAfter = Math.round(running * 100) / 100;
-  });
+  for (const row of data) {
+    running += row.type === 'deposit' ? Number(row.amount) : -Number(row.amount);
+    const { error: updateError } = await supabase
+      .from('transactions')
+      .update({ balance_after: Math.round(running * 100) / 100 })
+      .eq('id', row.id);
+    if (updateError) throw new Error(updateError.message);
+  }
 }
 
 const MONTH_NAMES_IT = [
@@ -128,9 +135,8 @@ const MONTH_NAMES_IT = [
   'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic',
 ];
 
-function getMonthlyStats(accountId, monthsBack = 6) {
-  const db = readDb();
-  const transactions = db.transactions.filter((t) => t.accountId === accountId);
+async function getMonthlyStats(accountId, monthsBack = 6) {
+  const transactions = await getAllTransactions(accountId);
 
   const now = new Date();
   const months = [];
@@ -170,21 +176,30 @@ function getMonthlyStats(accountId, monthsBack = 6) {
   });
 }
 
-function verifyKidsPin(pin) {
-  const db = readDb();
-  return bcrypt.compareSync(String(pin), db.settings.kidsPinHash);
+async function getSettings() {
+  const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
+  if (error) throw new Error(error.message);
+  return data;
 }
 
-function verifyParentPin(pin) {
-  const db = readDb();
-  return bcrypt.compareSync(String(pin), db.settings.parentPinHash);
+async function verifyKidsPin(pin) {
+  const settings = await getSettings();
+  return Boolean(settings) && bcrypt.compareSync(String(pin), settings.kids_pin_hash);
 }
 
-function setPins({ kidsPin, parentPin }) {
-  const db = readDb();
-  if (kidsPin) db.settings.kidsPinHash = bcrypt.hashSync(String(kidsPin), 10);
-  if (parentPin) db.settings.parentPinHash = bcrypt.hashSync(String(parentPin), 10);
-  writeDb(db);
+async function verifyParentPin(pin) {
+  const settings = await getSettings();
+  return Boolean(settings) && bcrypt.compareSync(String(pin), settings.parent_pin_hash);
+}
+
+async function setPins({ kidsPin, parentPin }) {
+  const update = {};
+  if (kidsPin) update.kids_pin_hash = bcrypt.hashSync(String(kidsPin), 10);
+  if (parentPin) update.parent_pin_hash = bcrypt.hashSync(String(parentPin), 10);
+  if (Object.keys(update).length === 0) return;
+
+  const { error } = await supabase.from('app_settings').update(update).eq('id', 1);
+  if (error) throw new Error(error.message);
 }
 
 module.exports = {
