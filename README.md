@@ -107,6 +107,54 @@ semplice è farlo in locale (una volta), collegandoti allo stesso database:
 Da quel momento le nuove password valgono subito sull'app online, senza
 bisogno di un nuovo deploy.
 
+## Passo 5 — Tieni sveglio il database e ricevi un backup automatico
+
+L'app, se usata raramente, rischia due cose: Supabase mette in pausa i
+progetti gratuiti dopo 7 giorni senza richieste al database, e in generale è
+sempre meglio avere una copia di sicurezza dello storico a parte. Per
+questo l'app include due controlli automatici (due "Cron Job" di Vercel):
+
+- **Ogni giorno**, una richiesta leggerissima al database (una semplice
+  lettura, nessuna scrittura) per tenerlo "sveglio" e impedire la pausa
+  automatica.
+- **Ogni domenica**, un'email con in allegato un file CSV con **tutto** lo
+  storico di tutte le transazioni di tutti e tre i conti, così hai sempre
+  una copia a parte anche fuori da Supabase.
+
+Per attivarli servono 4 nuove variabili d'ambiente su Vercel:
+
+1. **Genera una "Password per le app" di Google** (serve per far inviare
+   email al server a nome tuo, senza usare la password normale del tuo
+   account):
+   - Vai su [myaccount.google.com/security](https://myaccount.google.com/security)
+   - Se non ce l'hai già, attiva la **Verifica in due passaggi** (richiesta
+     obbligatoriamente da Google per poter generare una Password per le app)
+   - Cerca **Password per le app** (nella ricerca in alto se non la vedi in
+     elenco), scegli un nome a piacere (es. "BabyBanking") e clicca
+     **Genera**
+   - Copia il codice di 16 caratteri che appare (es. `abcd efgh ijkl mnop`,
+     va bene anche con gli spazi)
+
+2. Su Vercel → **Settings** → **Environment Variables**, aggiungi:
+
+   | Nome                  | Valore                                                                 |
+   | --------------------- | ----------------------------------------------------------------------- |
+   | `CRON_SECRET`          | una stringa lunga e casuale (generala come hai fatto per `SESSION_SECRET`) |
+   | `GMAIL_USER`           | il tuo indirizzo Gmail                                                    |
+   | `GMAIL_APP_PASSWORD`   | il codice di 16 caratteri generato al punto 1                            |
+   | `BACKUP_EMAIL_TO`      | l'indirizzo a cui vuoi ricevere il backup (può essere lo stesso di `GMAIL_USER`) |
+
+3. **Rifai il deploy** (Vercel → Deployments → tre puntini sull'ultimo
+   deploy → Redeploy) perché le nuove variabili vengano applicate.
+
+4. Per controllare che funzioni: Vercel → scheda **Cron Jobs** del progetto
+   mostra i due job programmati e, dopo che sono scattati almeno una volta,
+   l'esito dell'ultima esecuzione. Puoi anche forzarne uno subito cliccandoci
+   sopra invece di aspettare l'orario programmato.
+
+Se preferisci non usare Gmail, puoi comunque esportare manualmente lo
+storico in qualsiasi momento da Supabase (vedi "Dati salvati" più sotto).
+
 ## Provare le modifiche in locale prima di pubblicarle
 
 Con `.env.local` configurato come sopra (Passo 4.1), puoi lanciare l'app sul
@@ -132,9 +180,10 @@ altri passaggi.
 ## Dati salvati
 
 Conti e movimenti vivono nel database Supabase (non più in un file locale).
-Supabase fa già backup automatici sul piano gratuito, ma se vuoi un'ulteriore
-copia di sicurezza puoi esportare le tabelle da **Table Editor** → menu dei
-tre puntini → **Export data** in formato CSV, di tanto in tanto.
+Se hai configurato il Passo 5, ricevi già ogni domenica un CSV di backup via
+email. In più, Supabase fa backup automatici sul piano gratuito, e in
+qualsiasi momento puoi anche esportare le tabelle a mano da **Table Editor**
+→ menu dei tre puntini → **Export data** in formato CSV.
 
 ## Struttura del progetto
 
@@ -145,8 +194,11 @@ src/app.js              -> app Express condivisa da locale e Vercel
 src/store.js             -> lettura/scrittura dati su Supabase
 src/session.js            -> login "senza server acceso 24/7" (cookie firmato)
 src/routes.js              -> API usate dal frontend
-public/                     -> interfaccia grafica (HTML/CSS/JS)
-supabase/schema.sql          -> struttura del database da eseguire su Supabase
-scripts/set-pins.js           -> script da riga di comando per cambiare le password
-vercel.json                    -> configurazione del deploy su Vercel
+src/routes-cron.js          -> endpoint dei due Cron Job (ping giornaliero, backup settimanale)
+src/mailer.js                -> invio dell'email di backup via Gmail
+src/csv.js                     -> genera il file CSV dello storico transazioni
+public/                          -> interfaccia grafica (HTML/CSS/JS)
+supabase/schema.sql                -> struttura del database da eseguire su Supabase
+scripts/set-pins.js                  -> script da riga di comando per cambiare le password
+vercel.json                            -> configurazione del deploy e dei Cron Job su Vercel
 ```

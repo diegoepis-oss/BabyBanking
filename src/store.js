@@ -1,16 +1,6 @@
 const { createClient } = require('@supabase/supabase-js');
 const bcrypt = require('bcryptjs');
-
-function getEnv(name) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(
-      `Manca la variabile d'ambiente ${name}. Configurala su Vercel (Settings -> Environment Variables) ` +
-        `oppure nel file .env.local se stai lavorando in locale.`
-    );
-  }
-  return value;
-}
+const { getEnv } = require('./env');
 
 const supabase = createClient(getEnv('SUPABASE_URL'), getEnv('SUPABASE_SERVICE_ROLE_KEY'), {
   auth: { persistSession: false },
@@ -176,6 +166,29 @@ async function getMonthlyStats(accountId, monthsBack = 6) {
   });
 }
 
+async function pingDatabase() {
+  const { error } = await supabase.from('accounts').select('id').limit(1);
+  if (error) throw new Error(error.message);
+}
+
+async function getAllTransactionsForBackup() {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('*, accounts(name)')
+    .order('date', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error) throw new Error(error.message);
+
+  return data.map((row) => ({
+    accountName: row.accounts ? row.accounts.name : row.account_id,
+    date: row.date,
+    type: row.type,
+    amount: Number(row.amount),
+    description: row.description,
+    balanceAfter: Number(row.balance_after),
+  }));
+}
+
 async function getSettings() {
   const { data, error } = await supabase.from('app_settings').select('*').eq('id', 1).maybeSingle();
   if (error) throw new Error(error.message);
@@ -209,6 +222,8 @@ module.exports = {
   getMonthlyStats,
   addTransaction,
   deleteTransaction,
+  pingDatabase,
+  getAllTransactionsForBackup,
   verifyKidsPin,
   verifyParentPin,
   setPins,
