@@ -167,7 +167,13 @@ async function getMonthlyStats(accountId, monthsBack = 6) {
 }
 
 async function pingDatabase() {
-  const { error } = await supabase.from('accounts').select('id').limit(1);
+  // Una lettura non basta sempre a convincere Supabase che il progetto è
+  // attivo: scriviamo davvero (aggiorniamo un timestamp) per essere sicuri
+  // che conti come attività e il progetto non vada mai in pausa.
+  const { error } = await supabase
+    .from('app_settings')
+    .update({ last_heartbeat_at: new Date().toISOString() })
+    .eq('id', 1);
   if (error) throw new Error(error.message);
 }
 
