@@ -25,6 +25,7 @@ create table if not exists app_settings (
   id int primary key default 1,
   kids_pin_hash text not null,
   parent_pin_hash text not null,
+  last_heartbeat_at timestamptz,
   constraint app_settings_singleton check (id = 1)
 );
 
