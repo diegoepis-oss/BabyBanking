@@ -1,8 +1,14 @@
 name: Supabase keepalive
 
-# Tiene sveglio il progetto Supabase gratuito con una piccola scrittura
-# giornaliera, indipendente dal Cron Job di Vercel: se uno dei due smette
-# di funzionare per qualche motivo, l'altro continua a coprire.
+# Tiene sveglio il progetto Supabase gratuito, indipendente dal Cron Job di
+# Vercel: se uno dei due smette di funzionare per qualche motivo, l'altro
+# continua a coprire.
+#
+# Invece di fare una singola scrittura identica ogni giorno alla stessa ora
+# (un pattern facilmente riconoscibile come automatico), simula una visita
+# reale: legge l'elenco dei conti e gli ultimi movimenti, come se qualcuno
+# avesse aperto l'app, e solo alla fine aggiorna un timestamp. L'orario
+# esatto varia ogni giorno di qualche minuto.
 #
 # Richiede due "secrets" in questo repository (Settings -> Secrets and
 # variables -> Actions -> New repository secret), con gli stessi valori già
@@ -10,14 +16,36 @@ name: Supabase keepalive
 
 on:
   schedule:
-    - cron: "17 6 * * *" # ogni giorno, ~06:17 UTC
+    - cron: "17 6 * * *" # ogni giorno, ~06:17 UTC (+ un ritardo casuale)
   workflow_dispatch: {} # permette di avviarlo a mano dalla scheda Actions
 
 jobs:
   ping:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
-      - name: Scrivi un timestamp di "battito cardiaco" su Supabase
+      - name: Aspetta un tempo casuale (orario meno prevedibile)
+        run: sleep $(( RANDOM % 1200 )) # fino a 20 minuti di attesa casuale
+
+      - name: Leggi l'elenco dei conti (come quando si apre l'app)
+        run: |
+          curl -fsS \
+            "${SUPABASE_URL}/rest/v1/accounts?select=id,name,avatar,color" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -o /dev/null
+
+      - name: Leggi gli ultimi movimenti (come quando si apre un conto)
+        run: |
+          curl -fsS \
+            "${SUPABASE_URL}/rest/v1/transactions?select=id,type,amount&order=created_at.desc&limit=5" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -o /dev/null
+
+      - name: Scrivi un timestamp di "battito cardiaco"
         run: |
           curl --fail -sS -X PATCH \
             "${SUPABASE_URL}/rest/v1/app_settings?id=eq.1" \
@@ -26,6 +54,3 @@ jobs:
             -H "Content-Type: application/json" \
             -H "Prefer: return=minimal" \
             -d "{\"last_heartbeat_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

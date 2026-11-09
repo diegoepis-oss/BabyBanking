@@ -120,12 +120,15 @@ questo l'app include due controlli automatici (due "Cron Job" di Vercel):
   storico di tutte le transazioni di tutti e tre i conti, così hai sempre
   una copia a parte anche fuori da Supabase.
 
-In più, **un secondo meccanismo indipendente** fa la stessa piccola
-scrittura ogni giorno, ma passando da GitHub Actions invece che da Vercel:
-non costa nulla in più e serve da "riserva" nel caso il Cron Job di Vercel
-smetta di scattare per qualche motivo (è un problema che capita, segnalato
-da diversi utenti Supabase). Bastano due secrets da aggiungere su GitHub
-(vedi punto 5 più sotto).
+In più, **un secondo meccanismo indipendente** passa da GitHub Actions
+invece che da Vercel: non costa nulla in più e serve da "riserva" nel caso
+il Cron Job di Vercel smetta di scattare per qualche motivo (è un problema
+che capita, segnalato da diversi utenti Supabase). Per non essere un
+singolo "tocco" sempre identico e sempre alla stessa ora (un pattern
+facilmente riconoscibile come automatico), simula una visita più realistica:
+legge l'elenco dei conti e gli ultimi movimenti, con un orario che varia
+ogni giorno di qualche minuto, e solo alla fine aggiorna il timestamp.
+Bastano due secrets da aggiungere su GitHub (vedi punto 5 più sotto).
 
 Per attivarli servono 4 nuove variabili d'ambiente su Vercel:
 
