@@ -114,12 +114,18 @@ progetti gratuiti dopo 7 giorni senza richieste al database, e in generale è
 sempre meglio avere una copia di sicurezza dello storico a parte. Per
 questo l'app include due controlli automatici (due "Cron Job" di Vercel):
 
-- **Ogni giorno**, una richiesta leggerissima al database (una semplice
-  lettura, nessuna scrittura) per tenerlo "sveglio" e impedire la pausa
-  automatica.
+- **Ogni giorno**, una piccola scrittura nel database (aggiorna un
+  timestamp) per tenerlo "sveglio" e impedire la pausa automatica.
 - **Ogni domenica**, un'email con in allegato un file CSV con **tutto** lo
   storico di tutte le transazioni di tutti e tre i conti, così hai sempre
   una copia a parte anche fuori da Supabase.
+
+In più, **un secondo meccanismo indipendente** fa la stessa piccola
+scrittura ogni giorno, ma passando da GitHub Actions invece che da Vercel:
+non costa nulla in più e serve da "riserva" nel caso il Cron Job di Vercel
+smetta di scattare per qualche motivo (è un problema che capita, segnalato
+da diversi utenti Supabase). Bastano due secrets da aggiungere su GitHub
+(vedi punto 5 più sotto).
 
 Per attivarli servono 4 nuove variabili d'ambiente su Vercel:
 
@@ -151,6 +157,21 @@ Per attivarli servono 4 nuove variabili d'ambiente su Vercel:
    mostra i due job programmati e, dopo che sono scattati almeno una volta,
    l'esito dell'ultima esecuzione. Puoi anche forzarne uno subito cliccandoci
    sopra invece di aspettare l'orario programmato.
+
+5. **Attiva anche il secondo meccanismo "di riserva" su GitHub**: nel
+   repository su GitHub, vai su **Settings** → **Secrets and variables** →
+   **Actions** → **New repository secret**, e aggiungi questi due (stessi
+   valori già usati su Vercel):
+
+   | Nome                          | Valore                              |
+   | ----------------------------- | ------------------------------------ |
+   | `SUPABASE_URL`                 | il Project URL di Supabase           |
+   | `SUPABASE_SERVICE_ROLE_KEY`    | la chiave service_role di Supabase   |
+
+   Per controllare che funzioni, vai sulla scheda **Actions** del
+   repository → **Supabase keepalive** → **Run workflow** per forzarlo
+   subito invece di aspettare l'orario programmato: se la riga diventa
+   verde ✅ ha funzionato.
 
 Se preferisci non usare Gmail, puoi comunque esportare manualmente lo
 storico in qualsiasi momento da Supabase (vedi "Dati salvati" più sotto).
@@ -199,6 +220,8 @@ src/mailer.js                -> invio dell'email di backup via Gmail
 src/csv.js                     -> genera il file CSV dello storico transazioni
 public/                          -> interfaccia grafica (HTML/CSS/JS)
 supabase/schema.sql                -> struttura del database da eseguire su Supabase
-scripts/set-pins.js                  -> script da riga di comando per cambiare le password
-vercel.json                            -> configurazione del deploy e dei Cron Job su Vercel
+supabase/migrations/                 -> modifiche incrementali allo schema, da eseguire a mano
+scripts/set-pins.js                    -> script da riga di comando per cambiare le password
+vercel.json                              -> configurazione del deploy e dei Cron Job su Vercel
+.github/workflows/supabase-keepalive.yml  -> ping di riserva giornaliero, indipendente da Vercel
 ```

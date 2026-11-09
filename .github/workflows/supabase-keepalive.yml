@@ -1,0 +1,31 @@
+name: Supabase keepalive
+
+# Tiene sveglio il progetto Supabase gratuito con una piccola scrittura
+# giornaliera, indipendente dal Cron Job di Vercel: se uno dei due smette
+# di funzionare per qualche motivo, l'altro continua a coprire.
+#
+# Richiede due "secrets" in questo repository (Settings -> Secrets and
+# variables -> Actions -> New repository secret), con gli stessi valori già
+# usati su Vercel: SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.
+
+on:
+  schedule:
+    - cron: "17 6 * * *" # ogni giorno, ~06:17 UTC
+  workflow_dispatch: {} # permette di avviarlo a mano dalla scheda Actions
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Scrivi un timestamp di "battito cardiaco" su Supabase
+        run: |
+          curl --fail -sS -X PATCH \
+            "${SUPABASE_URL}/rest/v1/app_settings?id=eq.1" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{\"last_heartbeat_at\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
